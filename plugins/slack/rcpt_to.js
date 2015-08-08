@@ -24,6 +24,16 @@ function getUsers(token, callback) {
 	});
 }
 
+function arrayToObject(arr) {
+	var obj = {};
+
+	for (var i = 0; i < arr.length; i++) {
+		obj[arr[i]] = true;
+	}
+
+	return obj;
+}
+
 function now() {
 	// Let's use this function to prevent typing * 100 somewhere
 	return new Date().getTime() * 1000;
@@ -56,7 +66,7 @@ exports.hook_rcpt = function(next, conn, params) {
 
 	if ((now() - lastUpdate) > ttl) {
 		return getUsers(plugin.cfg.tokens[params[0].host], function(err, fresh) { // TODO: handle this error
-			users[params[0].host] = fresh;
+			users[params[0].host] = arrayToObject(fresh);
 			cache[params[0].host] = now();
 
 			stage2.call(plugin, next, conn, params);
@@ -70,7 +80,7 @@ function stage2(next, conn, params) {
 	var plugin = this;
 
 	// stop if the receipt isn't a user on the slack domain / team
-	if (users[params[0].host].indexOf(params[0].user) == -1) {
+	if (!users[params[0].host][params[0].user]) {
 		return next();
 	}
 

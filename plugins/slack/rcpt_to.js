@@ -29,22 +29,33 @@ function now() {
 	return new Date().getTime() * 1000;
 }
 
+exports.register = function() {
+	var plugin = this;
+
+	plugin.load_slack_ini();
+};
+
+exports.load_slack_ini = function() {
+	var plugin = this;
+
+	plugin.cfg = plugin.config.get('slack.ini', function() {
+		plugin.load_slack_ini();
+	});
+};
+
 exports.hook_rcpt = function(next, conn, params) {
 	var plugin = this;
 
-	// TODO: should this be outside the hook? (as it watches for changes I believe)
-	var cfg = plugin.config.get('slack.ini');
-
 	// stop if the receipt isn't even on a slack enabled domain
-	if (typeof cfg.tokens[params[0].host] == 'undefined') {
+	if (typeof plugin.cfg.tokens[params[0].host] == 'undefined') {
 		return next();
 	}
 
 	var lastUpdate = cache[params[0].host] || 0;
-	var ttl = (cfg.cache && cfg.cache[params[0].host]) || cfg.main.default_cache_ttl || 600;
+	var ttl = (plugin.cfg.cache && plugin.cfg.cache[params[0].host]) || plugin.cfg.main.default_cache_ttl || 600;
 
 	if ((now() - lastUpdate) > ttl) {
-		return getUsers(cfg.tokens[params[0].host], function(err, fresh) { // TODO: handle this error
+		return getUsers(plugin.cfg.tokens[params[0].host], function(err, fresh) { // TODO: handle this error
 			users[params[0].host] = fresh;
 			cache[params[0].host] = now();
 

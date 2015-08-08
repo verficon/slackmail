@@ -1,17 +1,28 @@
 var request = require('request');
 
-exports.hook_queue = function(next, conn) {
+exports.register = function() {
 	var plugin = this;
 
-	// TODO: should this be outside the hook? (as it watches for changes I believe)
-	var cfg = plugin.config.get('slack.ini');
+	plugin.load_slack_ini();
+};
+
+exports.load_slack_ini = function() {
+	var plugin = this;
+
+	plugin.cfg = plugin.config.get('slack.ini', function() {
+		plugin.load_slack_ini();
+	});
+};
+
+exports.hook_queue = function(next, conn) {
+	var plugin = this;
 
 	// TODO: How do we handle grouped receipts, e.g. slackuser@host and postmaster@host?
 
 	request.post({
 		url: "https://slack.com/api/chat.postMessage",
 		form: {
-			token: cfg.tokens[conn.transaction.rcpt_to[0].host],
+			token: plugin.cfg.tokens[conn.transaction.rcpt_to[0].host],
 			channel: '@' + conn.transaction.rcpt_to[0].user,
 			username: conn.transaction.mail_from.address(),
 			icon_emoji: ":envelope:",
